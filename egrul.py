@@ -10,55 +10,61 @@ Original file is located at
 import pandas as pd
 from dadata import Dadata
 
-API = ''
-dadata = Dadata(API)
+class Parser():
+  def __init__(self, API):
+    self.dadata = Dadata(API)
+    self.frames = []
+  
+  def convert(self, result):
 
-frames = []
-def convert(result):
-  for i, data in enumerate(result):
-    out = {}
-    for (key, value) in result[i]['data']['address']['data'].items():
-      out[key] = value
-
-    for (key, value) in result[i]['data']['address'].items():
-      if (key != 'data'):
+    for i, data in enumerate(result):
+      out = {}
+      for (key, value) in result[i]['data']['address']['data'].items():
         out[key] = value
 
-    for (key, value) in result[i]['data'].items():
-      if (key != 'address'):
-        out[key] = value
+      for (key, value) in result[i]['data']['address'].items():
+        if (key != 'data'):
+          out[key] = value
 
-    for (key, value) in result[i].items():
-      if (key != 'data'):
-        out[key] = value
+      for (key, value) in result[i]['data'].items():
+        if (key != 'address'):
+          out[key] = value
 
-    out.pop('metro')
+      for (key, value) in result[i].items():
+        if (key != 'data'):
+          out[key] = value
 
-
-    temp = {}
-    to_del = []
-    for key in out.keys():
-      if (str(type(out[key])) == "<class 'dict'>"):
-        to_del.append(key)
-        for (k, v) in out[key].items():
-          temp[key + "_" + k] = v
-
-    out.update(temp)
-
-    for d in to_del:
-      out.pop(d)
-
-    df = pd.DataFrame(data=out, index=[out['name_full']])
-
-    frames.append(df)
+      out.pop('metro')
 
 
-data = pd.read_excel('input.xlsx')
+      temp = {}
+      to_del = []
+      for key in out.keys():
+        if (isinstance(out[key], dict)):
+          to_del.append(key)
+          for (k, v) in out[key].items():
+            temp[key + "_" + k] = v
 
-for i in data['ИНН']:
-  result = dadata.find_by_id(name="party", query=str(i))
-  convert(result)
+      out.update(temp)
 
-result = pd.concat(frames)
+      for d in to_del:
+        out.pop(d)
 
-result.to_excel('output.xlsx')
+      df = pd.DataFrame(data=out, index=[out['name_full']])
+
+      self.frames.append(df)
+
+  def parse(self, path):
+    data = pd.read_excel(path)
+
+    for i in data['ИНН']:
+      result = self.dadata.find_by_id(name="party", query=str(i))
+      self.convert(result)
+
+    result = pd.concat(self.frames)
+
+    result.to_excel('output.xlsx')
+
+    self.frames = []
+
+    return result
